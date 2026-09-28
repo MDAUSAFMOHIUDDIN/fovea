@@ -93,7 +93,7 @@ export const FOVEA_FAQS: FAQItemDetailed[] = [
     category: 'Home Trial',
     question: 'Can I extend my Home Trial beyond 5 days?',
     answer:
-      'If you need additional time to visit your optician or obtain an updated pupillary distance reading, simply message our atelier concierge on WhatsApp (+91 96188 90557) or via email. We are pleased to provide complimentary extensions upon request.',
+      'If you need additional time to visit your optician or obtain an updated pupillary distance reading, simply message our atelier concierge on WhatsApp (+91 97009 56245) or via email. We are pleased to provide complimentary extensions upon request.',
     tags: ['extension', 'timing', 'duration'],
   },
 
