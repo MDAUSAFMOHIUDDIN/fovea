@@ -3,18 +3,29 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Trash2, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
 import { useFovea } from '@/lib/context';
 
 export default function CartDrawer() {
-  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, cartTotal, setIsHomeTrialModalOpen } =
+  const router = useRouter();
+  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, cartTotal, setIsHomeTrialModalOpen, user, isAuthLoading } =
     useFovea();
 
   const freeShippingThreshold = 300;
   const isEligibleForFreeShipping = cartTotal >= freeShippingThreshold;
 
   const handleWhatsAppPurchase = () => {
+    if (!user) {
+      try {
+        sessionStorage.setItem('fovea_resume_checkout', 'true');
+      } catch {}
+      setIsCartOpen(false);
+      router.push('/login?returnTo=checkout');
+      return;
+    }
+
     const orderLines = cart.map(
       (item, index) =>
         `${index + 1}. ${item.product.name}\n` +
@@ -211,9 +222,10 @@ export default function CartDrawer() {
                   <button
                     type="button"
                     onClick={handleWhatsAppPurchase}
+                    disabled={isAuthLoading}
                     className="w-full min-h-[50px] bg-[#0C162C] text-[#FAF9F6] font-semibold text-xs tracking-wider uppercase rounded-xl hover:bg-[#1A365D] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md"
                   >
-                    <span>Proceed Purchase on WhatsApp</span>
+                    <span>{isAuthLoading ? 'Checking secure session…' : 'Proceed Purchase on WhatsApp'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
