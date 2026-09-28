@@ -9,21 +9,17 @@ import {
   Sparkles,
   ShieldCheck,
   CheckCircle2,
-  Lock,
-  Mail,
-  Glasses,
-  Compass,
 } from 'lucide-react';
 import { useFovea } from '@/lib/context';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { user, isAuthLoading, loginWithGoogle, loginWithEmail } = useFovea();
+  const { user, isAuthLoading, loginWithGoogle } = useFovea();
 
-  const [email, setEmail] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [useEmailForm, setUseEmailForm] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const isCheckoutReturn =
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('returnTo') === 'checkout';
 
   // If already logged in, show quick redirect message or button
   if (user) {
@@ -46,10 +42,10 @@ export default function LoginPage() {
           </p>
           <div className="pt-2 flex flex-col gap-2.5">
             <Link
-              href="/account"
+              href={isCheckoutReturn ? '/' : '/account'}
               className="w-full min-h-[48px] px-6 bg-[#0C162C] text-[#FAF9F6] text-xs font-semibold uppercase tracking-wider rounded-xl hover:bg-[#1A365D] transition-all flex items-center justify-center gap-2 shadow-xs"
             >
-              <span>Go to My Account</span>
+              <span>{isCheckoutReturn ? 'Return to Checkout' : 'Go to My Account'}</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
@@ -68,24 +64,18 @@ export default function LoginPage() {
     try {
       setErrorMsg('');
       await loginWithGoogle();
-      router.push('/account');
-    } catch {
-      setErrorMsg('Unable to connect with Google. Please try again or use email sign-in.');
-    }
-  };
-
-  const handleEmailLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !email.includes('@')) {
-      setErrorMsg('Please enter a valid email address.');
-      return;
-    }
-    try {
-      setErrorMsg('');
-      await loginWithEmail(email, fullName);
-      router.push('/account');
-    } catch {
-      setErrorMsg('Unable to complete email sign-in. Please try again.');
+      router.push(isCheckoutReturn ? '/' : '/account');
+    } catch (error) {
+      const errorCode = (error as { code?: string }).code;
+      if (errorCode === 'auth/popup-closed-by-user' || errorCode === 'auth/cancelled-popup-request') {
+        setErrorMsg('Google sign-in was cancelled. Please try again to continue.');
+      } else if (errorCode === 'auth/unauthorized-domain') {
+        setErrorMsg('This website domain is not authorized for Google sign-in. Please contact Fovea support.');
+      } else if (errorCode === 'auth/network-request-failed') {
+        setErrorMsg('The connection was interrupted. Check your internet and try again.');
+      } else {
+        setErrorMsg('Unable to connect with Google right now. Please try again.');
+      }
     }
   };
 
@@ -109,7 +99,9 @@ export default function LoginPage() {
           </h1>
 
           <p className="text-xs sm:text-sm text-[#0C162C]/70 font-light leading-relaxed">
-            Access your curated optical wishlist, track Home Trial suites, and manage your delivery addresses.
+            {isCheckoutReturn
+              ? 'Sign in securely with Google to verify your identity and continue placing your order.'
+              : 'Access your curated optical wishlist, track Home Trial suites, and manage your delivery addresses.'}
           </p>
         </div>
 
@@ -158,71 +150,9 @@ export default function LoginPage() {
             )}
           </button>
 
-          {/* Divider */}
-          <div className="relative flex items-center justify-center my-4">
-            <div className="w-full border-t border-[#0C162C]/10" />
-            <span className="absolute px-3 bg-white text-[11px] uppercase tracking-wider text-[#0C162C]/40">
-              or
-            </span>
-          </div>
-
-          {/* Email Login Alternative */}
-          {!useEmailForm ? (
-            <button
-              type="button"
-              onClick={() => setUseEmailForm(true)}
-              className="w-full min-h-[46px] px-6 bg-[#FAF9F6] hover:bg-[#F5F3EF] border border-[#0C162C]/10 rounded-2xl text-xs font-semibold text-[#0C162C]/80 flex items-center justify-center gap-2 transition-all"
-            >
-              <Mail className="w-4 h-4 text-[#0D5C63]" />
-              <span>Continue with Email</span>
-            </button>
-          ) : (
-            <form onSubmit={handleEmailLogin} className="space-y-3.5 pt-1">
-              <div>
-                <label className="text-[11px] font-semibold text-[#0C162C] block mb-1">
-                  Full Name (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Elena Rostova"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-2.5 min-h-[44px] bg-[#FAF9F6] border border-[#0C162C]/12 rounded-xl text-xs text-[#0C162C] focus:outline-none focus:ring-1 focus:ring-[#0D5C63]"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-[#0C162C] block mb-1">
-                  Email Address <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="name@domain.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 min-h-[44px] bg-[#FAF9F6] border border-[#0C162C]/12 rounded-xl text-xs text-[#0C162C] focus:outline-none focus:ring-1 focus:ring-[#0D5C63]"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isAuthLoading}
-                className="w-full min-h-[48px] px-6 bg-[#0C162C] text-[#FAF9F6] rounded-xl text-xs font-semibold uppercase tracking-wider hover:bg-[#1A365D] transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-60"
-              >
-                <span>Sign In with Email</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setUseEmailForm(false)}
-                className="w-full text-center text-xs text-[#0C162C]/50 hover:text-[#0C162C] pt-1"
-              >
-                Cancel
-              </button>
-            </form>
-          )}
+          <p className="text-center text-[11px] leading-relaxed text-[#0C162C]/50 px-3">
+            Google verification is required before an order can be placed. Your password is never shared with Fovea.
+          </p>
         </div>
 
         {/* Security & Reassurance Footer */}
