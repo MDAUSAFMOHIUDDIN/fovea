@@ -1,7 +1,19 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import {
+  browserLocalPersistence,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithPopup,
+  signInWithRedirect,
+  signOut,
+  User as FirebaseUser,
+} from 'firebase/auth';
 import { Product, PRODUCTS } from './data';
+import { firebaseAuth } from './firebase';
 import {
   UserProfile,
   SavedAddress,
@@ -54,7 +66,6 @@ interface FoveaContextType {
   user: UserProfile | null;
   isAuthLoading: boolean;
   loginWithGoogle: () => Promise<void>;
-  loginWithEmail: (email: string, name?: string) => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
 
@@ -75,6 +86,7 @@ interface FoveaContextType {
 const FoveaContext = createContext<FoveaContextType | undefined>(undefined);
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   // 1. Wishlist State
   const [wishlist, setWishlist] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
@@ -118,16 +130,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   // 5. Customer Authentication State
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const savedUser = localStorage.getItem('fovea_customer_user');
-        if (savedUser) return JSON.parse(savedUser);
-      } catch {}
-    }
-    return null;
-  });
-  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   // 6. Saved Addresses State
   const [addresses, setAddresses] = useState<SavedAddress[]>(() => {
@@ -174,6 +178,63 @@ export function Providers({ children }: { children: React.ReactNode }) {
     } catch {}
   };
 
+  const profileFromFirebaseUser = (firebaseUser: FirebaseUser): UserProfile => {
+    let savedProfile: UserProfile | null = null;
+    try {
+      const saved = localStorage.getItem('fovea_customer_user');
+      if (saved) {
+        const parsed = JSON.parse(saved) as UserProfile;
+        if (parsed.id === firebaseUser.uid) savedProfile = parsed;
+      }
+    } catch {}
+
+    return {
+      id: firebaseUser.uid,
+      fullName: firebaseUser.displayName || savedProfile?.fullName || 'Fovea Client',
+      email: firebaseUser.email || savedProfile?.email || '',
+      mobileNumber: savedProfile?.mobileNumber || firebaseUser.phoneNumber || '',
+      avatar: firebaseUser.photoURL || savedProfile?.avatar,
+      joinedDate:
+        savedProfile?.joinedDate ||
+        new Date(firebaseUser.metadata.creationTime || Date.now()).toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+        }),
+      memberTier: savedProfile?.memberTier || 'Atelier Patron',
+    };
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    setPersistence(firebaseAuth, browserLocalPersistence).catch(() => {
+      // Firebase still uses its standard browser persistence if this is unavailable.
+    });
+
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
+      if (!active) return;
+      saveUserToStorage(firebaseUser ? profileFromFirebaseUser(firebaseUser) : null);
+      setIsAuthLoading(false);
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user || pathname === '/login') return;
+
+    try {
+      if (sessionStorage.getItem('fovea_resume_checkout') === 'true') {
+        sessionStorage.removeItem('fovea_resume_checkout');
+        const openCartTimer = window.setTimeout(() => setIsCartOpen(true), 0);
+        return () => window.clearTimeout(openCartTimer);
+      }
+    } catch {}
+  }, [pathname, user]);
+
   const saveAddressesToStorage = (newAddresses: SavedAddress[]) => {
     setAddresses(newAddresses);
     try {
@@ -191,80 +252,31 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Auth Functions
   const loginWithGoogle = async (): Promise<void> => {
     setIsAuthLoading(true);
-    // Simulate natural clean authentication handshake
-    await new Promise((resolve) => setTimeout(resolve, 800));
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
 
-    const googleUser: UserProfile = {
-      id: `usr_${Date.now()}`,
-      fullName: 'Mohammed Farooq',
-      email: 'mohammed.farooq@gmail.com',
-      mobileNumber: '+91 98765 43210',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-      joinedDate: 'September 2026',
-      memberTier: 'Atelier Patron',
-    };
+    try {
+      await setPersistence(firebaseAuth, browserLocalPersistence);
+      await signInWithPopup(firebaseAuth, provider);
+    } catch (error) {
+      const errorCode = (error as { code?: string }).code;
+      const shouldUseRedirect =
+        errorCode === 'auth/popup-blocked' ||
+        errorCode === 'auth/operation-not-supported-in-this-environment';
 
-    saveUserToStorage(googleUser);
+      if (shouldUseRedirect) {
+        await signInWithRedirect(firebaseAuth, provider);
+        return;
+      }
 
-    // Seed initial address if empty so user has realistic starting data
-    if (addresses.length === 0) {
-      const initialAddr: SavedAddress[] = [
-        {
-          id: 'addr-01',
-          label: 'Home',
-          fullName: 'Mohammed Farooq',
-          mobileNumber: '+91 98765 43210',
-          fullAddress: 'Flat 402, Royal Palms Apartments, Masab Tank',
-          landmark: 'Opposite Chacha Nehru Park',
-          city: 'Hyderabad',
-          state: 'Telangana',
-          pincode: '500028',
-          isDefault: true,
-        },
-      ];
-      saveAddressesToStorage(initialAddr);
+      setIsAuthLoading(false);
+      throw error;
     }
-
-    // Seed initial trial record if empty
-    if (homeTrialHistory.length === 0) {
-      const initialTrial: HomeTrialRecord[] = [
-        {
-          id: 'ht-rec-01',
-          referenceNumber: 'FOV-HT-8402',
-          date: 'September 26, 2026',
-          preferredSlot: 'Morning (10:30 AM — 1:00 PM)',
-          frameIds: ['fovea-01', 'fovea-03', 'fovea-04', 'fovea-07'],
-          status: 'Scheduled',
-          trackingNumber: 'BLUEDART-EXP-91820',
-          notes: 'Velvet presentation box dispatched via express courier.',
-        },
-      ];
-      saveTrialHistoryToStorage(initialTrial);
-    }
-
-    setIsAuthLoading(false);
-  };
-
-  const loginWithEmail = async (email: string, name?: string): Promise<void> => {
-    setIsAuthLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    const cleanName = name?.trim() || email.split('@')[0].replace(/[._]/g, ' ') || 'Client';
-    const emailUser: UserProfile = {
-      id: `usr_${Date.now()}`,
-      fullName: cleanName.charAt(0).toUpperCase() + cleanName.slice(1),
-      email: email.trim(),
-      mobileNumber: '+91 96188 90557',
-      joinedDate: 'September 2026',
-      memberTier: 'Client Privilege',
-    };
-
-    saveUserToStorage(emailUser);
-    setIsAuthLoading(false);
   };
 
   const logout = () => {
-    saveUserToStorage(null);
+    setIsAuthLoading(true);
+    void signOut(firebaseAuth).catch(() => setIsAuthLoading(false));
   };
 
   const updateProfile = (updates: Partial<UserProfile>) => {
@@ -441,7 +453,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
         user,
         isAuthLoading,
         loginWithGoogle,
-        loginWithEmail,
         logout,
         updateProfile,
         addresses,
