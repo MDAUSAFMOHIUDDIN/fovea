@@ -19,7 +19,7 @@ export default function WhatsAppModal() {
   const handleLaunchWhatsApp = (message: string) => {
     const encoded = encodeURIComponent(message || whatsAppInquiryText);
     // WhatsApp direct deep link with official Fovea business number
-    const whatsappUrl = `https://wa.me/919618890557?text=${encoded}`;
+    const whatsappUrl = `https://wa.me/919700956245?text=${encoded}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     setIsWhatsAppOpen(false);
   };
@@ -144,7 +144,7 @@ export default function WhatsAppModal() {
               {/* Security reassurance */}
               <div className="pt-2 flex items-center gap-2 text-[11px] text-[#0C162C]/50">
                 <ShieldCheck className="w-4 h-4 text-[#0D5C63]" />
-                <span>Official verified business line: +91 96188 90557</span>
+                <span>Official verified business line: +91 97009 56245</span>
               </div>
             </div>
           </motion.div>
