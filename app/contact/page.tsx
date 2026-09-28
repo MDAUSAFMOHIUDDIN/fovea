@@ -45,8 +45,8 @@ export default function ContactPage() {
     cityStateZip: 'Hyderabad, Telangana – 500028',
     fullAddress:
       'Fovea, Pillar Number 45, 2nd Floor, PVNR Flyover, LALS Enclave, Rethibowli, Mehdipatnam, Hyderabad, Telangana – 500028',
-    phone: '+91 96188 90557',
-    rawPhone: '+919618890557',
+    phone: '+91 97009 56245',
+    rawPhone: '+919700956245',
     website: 'fovea.com',
     email: 'concierge@fovea.com',
     directionsUrl:
@@ -322,7 +322,7 @@ export default function ContactPage() {
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                   INSTANT ATELIER CHAT
                 </span>
-                <span className="text-xs text-white/70 font-mono">+91 96188 90557</span>
+                <span className="text-xs text-white/70 font-mono">+91 97009 56245</span>
               </div>
 
               <h3 className="font-editorial text-2xl sm:text-3xl font-semibold leading-snug">
