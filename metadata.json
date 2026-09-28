@@ -1,0 +1,6 @@
+{
+  "name": "FOVEA — Handcrafted Luxury Eyewear & Optics",
+  "description": "Architectural eyewear, bespoke optical frames, and complimentary home trial. Experience modern optical precision crafted from Japanese titanium and Italian Mazzucchelli acetate.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
