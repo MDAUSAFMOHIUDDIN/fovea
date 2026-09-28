@@ -239,7 +239,7 @@ export default function Footer() {
               </p>
               <p className="text-xs text-[#0C162C]/65 flex items-center gap-2">
                 <Phone className="w-3.5 h-3.5 text-[#C5A880]" />
-                <a href="tel:+919618890557" className="hover:text-[#0D5C63] transition-colors">+91 96188 90557</a>
+                <a href="tel:+919700956245" className="hover:text-[#0D5C63] transition-colors">+91 97009 56245</a>
               </p>
               <p className="text-xs text-[#0C162C]/50 pt-1">
                 Mon — Sat · 10:30 AM — 8:30 PM IST · Sun 11 AM — 7 PM
