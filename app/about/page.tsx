@@ -664,7 +664,7 @@ export default function AboutPage() {
 
                 <div className="flex items-center gap-2 text-xs font-mono text-[#0D5C63] font-semibold">
                   <Phone className="w-4 h-4" />
-                  <span>+91 96188 90557</span>
+                  <span>+91 97009 56245</span>
                 </div>
               </div>
 
@@ -681,7 +681,7 @@ export default function AboutPage() {
                 </a>
 
                 <a
-                  href="tel:+919618890557"
+                  href="tel:+919700956245"
                   className="min-h-[46px] px-5 bg-white hover:bg-[#FAF9F6] text-[#0C162C] border border-[#0C162C]/15 font-semibold text-xs tracking-wider uppercase rounded-xl transition-all flex items-center gap-2"
                 >
                   <Phone className="w-4 h-4 text-[#0D5C63]" />
