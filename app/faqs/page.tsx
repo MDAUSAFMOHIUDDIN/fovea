@@ -373,7 +373,7 @@ export default function FAQsPage() {
           <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-[#0C162C]/60 border-t border-[#0C162C]/8">
             <span className="flex items-center gap-1.5">
               <Phone className="w-3.5 h-3.5 text-[#0D5C63]" />
-              <span>+91 96188 90557</span>
+              <span>+91 97009 56245</span>
             </span>
             <span className="text-[#0C162C]/30">·</span>
             <span className="flex items-center gap-1.5">
