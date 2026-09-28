@@ -190,7 +190,7 @@ export default function HomeTrialPage() {
     },
     {
       q: 'How can I contact the Fovea Concierge team?',
-      a: 'You can reach us directly via WhatsApp at +91 96188 90557 for immediate styling advice, prescription questions, or delivery rescheduling.',
+      a: 'You can reach us directly via WhatsApp at +91 97009 56245 for immediate styling advice, prescription questions, or delivery rescheduling.',
     },
   ];
 
@@ -962,7 +962,7 @@ export default function HomeTrialPage() {
       </section>
 
       {/* ============================================================== */}
-      {/* 11. WHATSAPP HELP SECTION (+91 96188 90557) */}
+      {/* 11. WHATSAPP HELP SECTION (+91 97009 56245) */}
       {/* ============================================================== */}
       <section className="py-14 bg-white border-t border-[#0C162C]/10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -979,13 +979,13 @@ export default function HomeTrialPage() {
                 Have questions about face sizing, trial availability in your area, or scheduling a visit? Our concierge is ready to assist.
               </p>
               <p className="text-xs font-mono font-semibold text-[#0D5C63] pt-1">
-                Official WhatsApp: +91 96188 90557
+                Official WhatsApp: +91 97009 56245
               </p>
             </div>
 
             <div className="shrink-0 w-full sm:w-auto">
               <a
-                href="https://wa.me/919618890557?text=Hi%20Fovea%2C%20I%20need%20help%20with%20Home%20Trial."
+                href="https://wa.me/919700956245?text=Hi%20Fovea%2C%20I%20need%20help%20with%20Home%20Trial."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:w-auto min-h-[48px] px-8 bg-[#0D5C63] hover:bg-[#094348] text-white font-semibold text-xs tracking-wider uppercase rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
