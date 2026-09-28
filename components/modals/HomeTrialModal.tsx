@@ -69,26 +69,30 @@ export default function HomeTrialModal() {
 
   // Auto-fill logged in user and default address
   useEffect(() => {
-    if (user) {
-      setDetails((prev) => ({
-        ...prev,
-        fullName: prev.fullName || user.fullName,
-        mobileNumber: prev.mobileNumber || user.mobileNumber,
-        email: prev.email || user.email,
-      }));
-    }
-    if (addresses && addresses.length > 0) {
-      const def = addresses.find((a) => a.isDefault) || addresses[0];
-      if (def) {
-        setAddress((prev) => ({
+    const hydrationTimer = window.setTimeout(() => {
+      if (user) {
+        setDetails((prev) => ({
           ...prev,
-          building: prev.building || def.fullAddress,
-          landmark: prev.landmark || def.landmark || '',
-          city: prev.city || def.city,
-          pincode: prev.pincode || def.pincode,
+          fullName: prev.fullName || user.fullName,
+          mobileNumber: prev.mobileNumber || user.mobileNumber,
+          email: prev.email || user.email,
         }));
       }
-    }
+      if (addresses && addresses.length > 0) {
+        const def = addresses.find((a) => a.isDefault) || addresses[0];
+        if (def) {
+          setAddress((prev) => ({
+            ...prev,
+            building: prev.building || def.fullAddress,
+            landmark: prev.landmark || def.landmark || '',
+            city: prev.city || def.city,
+            pincode: prev.pincode || def.pincode,
+          }));
+        }
+      }
+    }, 0);
+
+    return () => window.clearTimeout(hydrationTimer);
   }, [user, addresses, isHomeTrialModalOpen]);
 
   // Step 4 Schedule Form
@@ -165,7 +169,7 @@ export default function HomeTrialModal() {
     const notesStr = `Delivering to ${details.fullName || 'Valued Client'}, ${address.building || ''} ${address.street || ''}, ${address.city || 'Hyderabad'}`;
     const generatedRef = addHomeTrialRequest
       ? addHomeTrialRequest(selectedProducts.map((p) => p.id), slotStr, notesStr)
-      : `FOV-HT-${Math.floor(10000 + Math.random() * 90000)}`;
+      : `FOV-HT-${crypto.randomUUID().slice(0, 5).toUpperCase()}`;
     setBookingRef(generatedRef);
     setStep('confirmed');
   };
