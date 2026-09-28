@@ -14,6 +14,32 @@ export default function CartDrawer() {
   const freeShippingThreshold = 300;
   const isEligibleForFreeShipping = cartTotal >= freeShippingThreshold;
 
+  const handleWhatsAppPurchase = () => {
+    const orderLines = cart.map(
+      (item, index) =>
+        `${index + 1}. ${item.product.name}\n` +
+        `   Colour: ${item.colorName}\n` +
+        `   Lens: ${item.lensType}\n` +
+        `   Quantity: ${item.quantity}\n` +
+        `   Amount: $${item.product.price * item.quantity}`
+    );
+
+    const message = [
+      'Hello Fovea! I would like to proceed with this purchase:',
+      '',
+      ...orderLines,
+      '',
+      `Order total: $${cartTotal}`,
+      'Insured express courier: Complimentary',
+      '',
+      'Please confirm availability and guide me through the payment and delivery process.',
+    ].join('\n');
+
+    const whatsappUrl = `https://wa.me/919700956245?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    setIsCartOpen(false);
+  };
+
   return (
     <AnimatePresence>
       {isCartOpen && (
@@ -184,12 +210,10 @@ export default function CartDrawer() {
 
                   <button
                     type="button"
-                    onClick={() => {
-                      alert('Checkout process initiated with encrypted 256-bit security.');
-                    }}
+                    onClick={handleWhatsAppPurchase}
                     className="w-full min-h-[50px] bg-[#0C162C] text-[#FAF9F6] font-semibold text-xs tracking-wider uppercase rounded-xl hover:bg-[#1A365D] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md"
                   >
-                    <span>Proceed to Secure Checkout</span>
+                    <span>Proceed Purchase on WhatsApp</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
