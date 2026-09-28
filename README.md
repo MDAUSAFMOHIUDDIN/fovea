@@ -18,3 +18,9 @@ View your app in AI Studio: https://ai.studio/apps/2fce294a-7327-47c8-bba0-b1c68
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Customer authentication
+
+Checkout uses Firebase Google Authentication. Google must remain enabled in the
+`fovea-trial` Firebase project, and every production hostname must be listed in
+Firebase Authentication's authorized domains.
