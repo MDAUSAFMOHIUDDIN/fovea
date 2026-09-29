@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import NextLink from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Search, Heart, MessageSquare, Menu, ShoppingBag, User as UserIcon } from 'lucide-react';
 import { useFovea } from '@/lib/context';
@@ -68,19 +69,21 @@ export default function Header() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            {/* Zone 1: Brand Wordmark */}
-            <div className="flex items-center gap-3">
+            {/* Zone 1: Official Brand Logo */}
+            <div className="flex items-center shrink-0">
               <NextLink
                 href="/"
-                className="group flex flex-col focus:outline-hidden"
+                className="group block overflow-hidden rounded-md bg-[#07121f] shadow-sm ring-1 ring-[#C5A880]/25 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C5A880]"
                 aria-label="FOVEA Luxury Eyewear Homepage"
               >
-                <span className="font-editorial text-2xl sm:text-3xl font-semibold tracking-[0.22em] text-[#0C162C] group-hover:text-[#0D5C63] transition-colors uppercase">
-                  FOVEA
-                </span>
-                <span className="text-[9px] tracking-[0.32em] text-[#0C162C]/60 uppercase hidden sm:block -mt-1 font-sans">
-                  Optics & Atelier
-                </span>
+                <Image
+                  src="/fovea-logo.jpeg"
+                  alt="FOVEA Virtual Eye Store"
+                  width={728}
+                  height={368}
+                  priority
+                  className="h-10 w-[98px] sm:h-12 sm:w-[122px] object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]"
+                />
               </NextLink>
             </div>
 
