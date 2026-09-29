@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Search, Heart, ShoppingBag, MessageSquare, ArrowRight, ShieldCheck, Sparkles, User as UserIcon } from 'lucide-react';
@@ -41,15 +42,17 @@ export default function MobileNav({ isOpen, onClose, links }: MobileNavProps) {
             <Link
               href="/"
               onClick={onClose}
-              className="flex flex-col"
+              className="block overflow-hidden rounded-md bg-[#07121f] shadow-sm ring-1 ring-[#C5A880]/25"
               aria-label="FOVEA Homepage"
             >
-              <span className="font-editorial text-2xl font-semibold tracking-[0.2em] text-[#0C162C] uppercase">
-                FOVEA
-              </span>
-              <span className="text-[9px] tracking-[0.3em] text-[#0C162C]/60 uppercase -mt-0.5">
-                Optics & Atelier
-              </span>
+              <Image
+                src="/fovea-logo.jpeg"
+                alt="FOVEA Virtual Eye Store"
+                width={728}
+                height={368}
+                priority
+                className="h-12 w-[122px] object-cover object-center"
+              />
             </Link>
 
             <button
