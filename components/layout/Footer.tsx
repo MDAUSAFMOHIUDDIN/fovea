@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronDown, ArrowRight, Check, MessageSquare, Mail, Phone, MapPin } from 'lucide-react';
 import { useFovea } from '@/lib/context';
 
@@ -36,9 +37,19 @@ export default function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pb-16 border-b border-[#0C162C]/8">
           {/* Brand Manifesto */}
           <div className="lg:col-span-5 space-y-4">
-            <span className="font-editorial text-3xl font-semibold tracking-[0.2em] text-[#0C162C] uppercase block">
-              FOVEA
-            </span>
+            <Link
+              href="/"
+              aria-label="FOVEA homepage"
+              className="inline-block overflow-hidden rounded-lg bg-[#07121f] shadow-sm ring-1 ring-[#C5A880]/25"
+            >
+              <Image
+                src="/fovea-logo.jpeg"
+                alt="FOVEA Virtual Eye Store"
+                width={728}
+                height={368}
+                className="h-[72px] w-[142px] object-cover object-center"
+              />
+            </Link>
             <p className="text-xs uppercase tracking-[0.24em] text-[#0D5C63] font-semibold">
               The Architecture of Clear Vision
             </p>
