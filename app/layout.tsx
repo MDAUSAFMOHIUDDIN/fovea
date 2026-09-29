@@ -11,6 +11,7 @@ import WishlistDrawer from '@/components/modals/WishlistDrawer';
 import WhatsAppModal from '@/components/modals/WhatsAppModal';
 import HomeTrialModal from '@/components/modals/HomeTrialModal';
 import HomeTrialFloatingIndicator from '@/components/layout/HomeTrialFloatingIndicator';
+import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -48,6 +49,13 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'FOVEA Atelier' }],
   metadataBase: new URL('https://fovea.com'),
+  manifest: '/manifest.webmanifest',
+  applicationName: 'FOVEA',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'FOVEA',
+  },
   icons: {
     icon: [{ url: '/icon.jpeg', type: 'image/jpeg' }],
     shortcut: '/icon.jpeg',
@@ -104,6 +112,7 @@ export default function RootLayout({
             <WhatsAppModal />
             <HomeTrialModal />
             <HomeTrialFloatingIndicator />
+            <PWAInstallPrompt />
           </div>
         </Providers>
       </body>
