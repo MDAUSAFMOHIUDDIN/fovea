@@ -10,7 +10,7 @@ import { useFovea } from '@/lib/context';
 
 export default function CartDrawer() {
   const router = useRouter();
-  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, cartTotal, setIsHomeTrialModalOpen, user, isAuthLoading } =
+  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, cartTotal, setIsHomeTrialModalOpen, user, addresses, isAuthLoading } =
     useFovea();
 
   const freeShippingThreshold = 300;
@@ -26,20 +26,45 @@ export default function CartDrawer() {
       return;
     }
 
+    const deliveryAddress = addresses.find((address) => address.isDefault) || addresses[0];
     const orderLines = cart.map(
       (item, index) =>
-        `${index + 1}. ${item.product.name}\n` +
+        `${index + 1}. ${item.product.name} (${item.product.productCode || item.product.id})\n` +
+        `   Description: ${item.product.shortDesc}\n` +
+        `   Material: ${item.product.material}\n` +
+        `   Dimensions: ${item.product.dimensions}\n` +
         `   Colour: ${item.colorName}\n` +
         `   Lens: ${item.lensType}\n` +
         `   Quantity: ${item.quantity}\n` +
-        `   Amount: $${item.product.price * item.quantity}`
+        `   Unit price: $${item.product.price}\n` +
+        `   Line total: $${item.product.price * item.quantity}`
     );
 
+    const addressLines = deliveryAddress
+      ? [
+          deliveryAddress.fullAddress,
+          deliveryAddress.landmark ? `Landmark: ${deliveryAddress.landmark}` : '',
+          `${deliveryAddress.city}, ${deliveryAddress.state} - ${deliveryAddress.pincode}`,
+        ].filter(Boolean)
+      : ['No saved delivery address — please request it before confirming the order.'];
+
     const message = [
-      'Hello Fovea! I would like to proceed with this purchase:',
+      '*FOVEA — NEW PURCHASE REQUEST*',
+      '',
+      '*CUSTOMER DETAILS*',
+      `Name: ${user.fullName || 'Not provided'}`,
+      `Phone: ${deliveryAddress?.mobileNumber || user.mobileNumber || 'Not provided'}`,
+      `Email: ${user.email || 'Not provided'}`,
+      '',
+      '*DELIVERY ADDRESS / LOCATION*',
+      ...addressLines,
+      '',
+      '*SELECTED PRODUCTS*',
       '',
       ...orderLines,
       '',
+      '*ORDER SUMMARY*',
+      `Total items: ${cart.reduce((total, item) => total + item.quantity, 0)}`,
       `Order total: $${cartTotal}`,
       'Insured express courier: Complimentary',
       '',

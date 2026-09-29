@@ -65,6 +65,7 @@ export default function HomeTrialModal() {
   });
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [locationDetected, setLocationDetected] = useState(false);
+  const [currentLocationUrl, setCurrentLocationUrl] = useState('');
   const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Auto-fill logged in user and default address
@@ -129,38 +130,21 @@ export default function HomeTrialModal() {
         (pos) => {
           setIsDetectingLocation(false);
           setLocationDetected(true);
-          setAddress({
-            building: 'Residence 402, Royal Palms',
-            street: 'Road No. 12, Masab Tank',
-            landmark: 'Near Chacha Nehru Park',
-            city: 'Hyderabad',
-            pincode: '500028',
-          });
+          setCurrentLocationUrl(
+            `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+          );
         },
         () => {
-          // Fallback simulation for fast preview
           setIsDetectingLocation(false);
-          setLocationDetected(true);
-          setAddress({
-            building: 'Plot 82, Jubilee Heights',
-            street: 'Road No. 36, Jubilee Hills',
-            landmark: 'Near Peddamma Temple',
-            city: 'Hyderabad',
-            pincode: '500033',
-          });
+          setLocationDetected(false);
+          setCurrentLocationUrl('');
         },
         { timeout: 3000 }
       );
     } else {
       setIsDetectingLocation(false);
-      setLocationDetected(true);
-      setAddress({
-        building: 'Villa 14, Lotus Enclave',
-        street: 'Rethibowli, Mehdipatnam',
-        landmark: 'PVNR Flyover Pillar 45',
-        city: 'Hyderabad',
-        pincode: '500028',
-      });
+      setLocationDetected(false);
+      setCurrentLocationUrl('');
     }
   };
 
@@ -192,8 +176,43 @@ export default function HomeTrialModal() {
   };
 
   const handleWhatsAppBookingConfirm = () => {
-    const frameNames = selectedProducts.map((p) => p.name).join(', ');
-    const text = `Hello Fovea Concierge! I have confirmed my Home Trial booking (${bookingRef}). Selected frames: ${frameNames}. Delivery to: ${details.fullName} at ${address.building}, ${address.city}. Scheduled slot: ${dates[selectedDateIdx].label} (${selectedTimeSlot}). Please confirm dispatch.`;
+    const frameLines = selectedProducts.map(
+      (product, index) =>
+        `${index + 1}. ${product.name} (${product.productCode || product.id})\n` +
+        `   Description: ${product.shortDesc}\n` +
+        `   Material: ${product.material}\n` +
+        `   Shape: ${product.frameShape}\n` +
+        `   Dimensions: ${product.dimensions}\n` +
+        `   Default colour: ${product.defaultColor}`
+    );
+
+    const text = [
+      '*FOVEA — HOME TRIAL CONFIRMATION*',
+      `Booking reference: ${bookingRef}`,
+      '',
+      '*CUSTOMER DETAILS*',
+      `Name: ${details.fullName || 'Not provided'}`,
+      `Phone: ${details.mobileNumber || 'Not provided'}`,
+      `Alternate phone: ${details.alternateNumber || 'Not provided'}`,
+      `Email: ${details.email || 'Not provided'}`,
+      `Optometrist assistance: ${details.wantsEyeTest ? 'Yes' : 'No'}`,
+      '',
+      '*DELIVERY ADDRESS*',
+      `Building: ${address.building || 'Not provided'}`,
+      `Street: ${address.street || 'Not provided'}`,
+      `Landmark: ${address.landmark || 'Not provided'}`,
+      `City: ${address.city || 'Not provided'}`,
+      `PIN code: ${address.pincode || 'Not provided'}`,
+      `Google Maps location: ${currentLocationUrl || 'Not shared'}`,
+      '',
+      '*SCHEDULE*',
+      `${dates[selectedDateIdx]?.label || 'Next available slot'} (${selectedTimeSlot})`,
+      '',
+      '*SELECTED HOME TRIAL FRAMES*',
+      ...frameLines,
+      '',
+      'Please confirm the Home Trial dispatch and delivery details.',
+    ].join('\n');
     openWhatsAppWithInquiry(text);
   };
 
@@ -581,7 +600,7 @@ export default function HomeTrialModal() {
                       className="w-full sm:w-auto flex-1 min-h-[44px] px-4 bg-white hover:bg-[#F5F3EF] border border-[#0C162C]/15 rounded-xl text-xs font-semibold text-[#0C162C] flex items-center justify-center gap-2 shadow-xs transition-colors"
                     >
                       <Navigation className={`w-4 h-4 text-[#0D5C63] ${isDetectingLocation ? 'animate-spin' : ''}`} />
-                      <span>{isDetectingLocation ? 'Detecting GPS...' : locationDetected ? '✓ Location Detected (Autofilled)' : 'Use Current Location'}</span>
+                      <span>{isDetectingLocation ? 'Detecting GPS...' : locationDetected ? '✓ Current GPS Location Shared' : 'Use Current Location'}</span>
                     </button>
 
                     <button
