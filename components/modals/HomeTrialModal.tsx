@@ -38,7 +38,6 @@ export default function HomeTrialModal() {
     homeTrialFrames,
     toggleHomeTrialFrame,
     clearHomeTrial,
-    openWhatsAppWithInquiry,
     addHomeTrialRequest,
     user,
     addresses,
@@ -213,7 +212,12 @@ export default function HomeTrialModal() {
       '',
       'Please confirm the Home Trial dispatch and delivery details.',
     ].join('\n');
-    openWhatsAppWithInquiry(text);
+    const whatsappUrl = `https://wa.me/919700956245?text=${encodeURIComponent(text)}`;
+
+    // Use a same-tab redirect for Home Trial confirmations. Mobile browsers can
+    // block a second popup/modal-to-popup chain, while a direct navigation from
+    // the user's button click reliably opens the WhatsApp app or WhatsApp Web.
+    window.location.assign(whatsappUrl);
   };
 
   return (
