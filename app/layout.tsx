@@ -48,6 +48,11 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'FOVEA Atelier' }],
   metadataBase: new URL('https://fovea.com'),
+  icons: {
+    icon: [{ url: '/icon.jpeg', type: 'image/jpeg' }],
+    shortcut: '/icon.jpeg',
+    apple: '/icon.jpeg',
+  },
   openGraph: {
     title: 'FOVEA — Handcrafted Luxury Eyewear & Optics',
     description:
@@ -56,12 +61,21 @@ export const metadata: Metadata = {
     url: 'https://fovea.com',
     siteName: 'FOVEA',
     locale: 'en_US',
+    images: [
+      {
+        url: '/fovea-logo.jpeg',
+        width: 728,
+        height: 368,
+        alt: 'FOVEA Virtual Eye Store',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'FOVEA — Handcrafted Luxury Eyewear & Optics',
     description:
       'Architectural eyewear, bespoke optical frames, and complimentary home trial.',
+    images: ['/fovea-logo.jpeg'],
   },
 };
 
