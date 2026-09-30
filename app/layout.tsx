@@ -11,6 +11,7 @@ import WishlistDrawer from '@/components/modals/WishlistDrawer';
 import WhatsAppModal from '@/components/modals/WhatsAppModal';
 import HomeTrialModal from '@/components/modals/HomeTrialModal';
 import HomeTrialFloatingIndicator from '@/components/layout/HomeTrialFloatingIndicator';
+import AuthGateModal from '@/components/modals/AuthGateModal';
 import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
 import FoveaChatbot from '@/components/chat/FoveaChatbot';
 
@@ -112,6 +113,7 @@ export default function RootLayout({
             <WishlistDrawer />
             <WhatsAppModal />
             <HomeTrialModal />
+            <AuthGateModal />
             <HomeTrialFloatingIndicator />
             <PWAInstallPrompt />
             <FoveaChatbot />
