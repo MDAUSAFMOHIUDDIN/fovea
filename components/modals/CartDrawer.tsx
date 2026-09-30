@@ -10,7 +10,7 @@ import { useFovea } from '@/lib/context';
 
 export default function CartDrawer() {
   const router = useRouter();
-  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, cartTotal, setIsHomeTrialModalOpen, user, addresses, isAuthLoading } =
+  const { isCartOpen, setIsCartOpen, cart, updateCartQuantity, removeFromCart, cartTotal, setIsHomeTrialModalOpen, user, addresses, isAuthLoading, addCurrentCartToOrderHistory } =
     useFovea();
 
   const freeShippingThreshold = 300;
@@ -48,8 +48,10 @@ export default function CartDrawer() {
         ].filter(Boolean)
       : ['No saved delivery address — please request it before confirming the order.'];
 
+    const orderReference = addCurrentCartToOrderHistory();
     const message = [
       '*FOVEA — NEW PURCHASE REQUEST*',
+      `Order reference: ${orderReference}`,
       '',
       '*CUSTOMER DETAILS*',
       `Name: ${user.fullName || 'Not provided'}`,
