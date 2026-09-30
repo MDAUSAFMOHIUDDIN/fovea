@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   browserLocalPersistence,
@@ -12,8 +12,9 @@ import {
   signOut,
   User as FirebaseUser,
 } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { Product, PRODUCTS } from './data';
-import { firebaseAuth } from './firebase';
+import { firebaseAuth, firebaseDb } from './firebase';
 import {
   UserProfile,
   SavedAddress,
@@ -68,6 +69,9 @@ interface FoveaContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
+  isAuthGateOpen: boolean;
+  authGateReason: string;
+  closeAuthGate: () => void;
 
   // Customer Saved Addresses
   addresses: SavedAddress[];
@@ -81,6 +85,7 @@ interface FoveaContextType {
 
   // Customer Orders / Request History
   orderHistory: OrderRecord[];
+  addCurrentCartToOrderHistory: () => string;
 }
 
 const FoveaContext = createContext<FoveaContextType | undefined>(undefined);
@@ -88,36 +93,13 @@ const FoveaContext = createContext<FoveaContextType | undefined>(undefined);
 export function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // 1. Wishlist State
-  const [wishlist, setWishlist] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('fovea_wishlist');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return ['fovea-01', 'fovea-03'];
-  });
+  const [wishlist, setWishlist] = useState<string[]>([]);
 
   // 2. Cart State
-  const [cart, setCart] = useState<CartItem[]>([
-    {
-      product: PRODUCTS[0],
-      colorName: PRODUCTS[0].defaultColor,
-      quantity: 1,
-      lensType: 'Prescription Single-Vision',
-    },
-  ]);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
   // 3. Home Trial Current Selection State
-  const [homeTrialFrames, setHomeTrialFrames] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('fovea_home_trial');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return ['fovea-01', 'fovea-02'];
-  });
+  const [homeTrialFrames, setHomeTrialFrames] = useState<string[]>([]);
 
   // 4. Modals State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -132,39 +114,37 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // 5. Customer Authentication State
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isAccountDataReady, setIsAccountDataReady] = useState(false);
+  const [isAuthGateOpen, setIsAuthGateOpen] = useState(false);
+  const [authGateReason, setAuthGateReason] = useState('continue with this action');
+  const pendingActionRef = useRef<(() => void) | null>(null);
 
   // 6. Saved Addresses State
-  const [addresses, setAddresses] = useState<SavedAddress[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('fovea_customer_addresses');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return [];
-  });
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
 
   // 7. Home Trial History State
-  const [homeTrialHistory, setHomeTrialHistory] = useState<HomeTrialRecord[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('fovea_customer_trial_history');
-        if (saved) return JSON.parse(saved);
-      } catch {}
-    }
-    return [];
-  });
+  const [homeTrialHistory, setHomeTrialHistory] = useState<HomeTrialRecord[]>([]);
 
   // 8. Order / Request History State
-  const [orderHistory, setOrderHistory] = useState<OrderRecord[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('fovea_customer_orders');
-        if (saved) return JSON.parse(saved);
-      } catch {}
+  const [orderHistory, setOrderHistory] = useState<OrderRecord[]>([]);
+
+  const accountKey = (uid: string) => `fovea_account_${uid}`;
+
+  const requestAuthentication = (reason: string, action: () => void) => {
+    if (user) {
+      action();
+      return true;
     }
-    return [];
-  });
+    pendingActionRef.current = action;
+    setAuthGateReason(reason);
+    setIsAuthGateOpen(true);
+    return false;
+  };
+
+  const closeAuthGate = () => {
+    pendingActionRef.current = null;
+    setIsAuthGateOpen(false);
+  };
 
   // Persistence helpers
   const saveUserToStorage = (userData: UserProfile | null) => {
@@ -211,10 +191,75 @@ export function Providers({ children }: { children: React.ReactNode }) {
       // Firebase still uses its standard browser persistence if this is unavailable.
     });
 
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
       if (!active) return;
-      saveUserToStorage(firebaseUser ? profileFromFirebaseUser(firebaseUser) : null);
+      if (!firebaseUser) {
+        saveUserToStorage(null);
+        setWishlist([]);
+        setCart([]);
+        setHomeTrialFrames([]);
+        setAddresses([]);
+        setHomeTrialHistory([]);
+        setOrderHistory([]);
+        setIsAccountDataReady(false);
+        setIsAuthLoading(false);
+        return;
+      }
+
+      const profile = profileFromFirebaseUser(firebaseUser);
+      saveUserToStorage(profile);
+
+      type StoredCartItem = Omit<CartItem, 'product'> & { productId: string };
+      type AccountData = {
+        profile?: UserProfile;
+        wishlist?: string[];
+        cart?: StoredCartItem[];
+        homeTrialFrames?: string[];
+        addresses?: SavedAddress[];
+        homeTrialHistory?: HomeTrialRecord[];
+        orderHistory?: OrderRecord[];
+      };
+
+      let accountData: AccountData = {};
+      try {
+        const local = localStorage.getItem(accountKey(firebaseUser.uid));
+        if (local) accountData = JSON.parse(local) as AccountData;
+
+        const snapshot = await getDoc(doc(firebaseDb, 'customers', firebaseUser.uid));
+        if (snapshot.exists()) accountData = { ...accountData, ...(snapshot.data() as AccountData) };
+      } catch {
+        // Account-specific browser cache remains available if cloud sync is temporarily unavailable.
+      }
+
+      if (!active) return;
+      const restoredCart = (accountData.cart || []).flatMap((item) => {
+        const product = PRODUCTS.find((candidate) => candidate.id === item.productId);
+        return product ? [{ ...item, product }] : [];
+      });
+      setWishlist(accountData.wishlist || []);
+      setCart(restoredCart);
+      setHomeTrialFrames(accountData.homeTrialFrames || []);
+      setAddresses(accountData.addresses || []);
+      setHomeTrialHistory(accountData.homeTrialHistory || []);
+      setOrderHistory(accountData.orderHistory || []);
+      if (accountData.profile) {
+        saveUserToStorage({
+          ...profile,
+          ...accountData.profile,
+          id: firebaseUser.uid,
+          email: firebaseUser.email || accountData.profile.email,
+          avatar: firebaseUser.photoURL || accountData.profile.avatar,
+        });
+      }
+      setIsAccountDataReady(true);
       setIsAuthLoading(false);
+
+      if (pendingActionRef.current) {
+        const pendingAction = pendingActionRef.current;
+        pendingActionRef.current = null;
+        setIsAuthGateOpen(false);
+        window.setTimeout(pendingAction, 0);
+      }
     });
 
     return () => {
@@ -222,6 +267,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!user || !isAccountDataReady) return;
+    const timer = window.setTimeout(() => {
+      const payload = {
+        profile: user,
+        wishlist,
+        cart: cart.map(({ product, ...item }) => ({ ...item, productId: product.id })),
+        homeTrialFrames,
+        addresses,
+        homeTrialHistory,
+        orderHistory,
+      };
+      try {
+        localStorage.setItem(accountKey(user.id), JSON.stringify(payload));
+      } catch {}
+      void setDoc(
+        doc(firebaseDb, 'customers', user.id),
+        { ...payload, updatedAt: serverTimestamp() },
+        { merge: true }
+      ).catch(() => undefined);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [user, isAccountDataReady, wishlist, cart, homeTrialFrames, addresses, homeTrialHistory, orderHistory]);
 
   useEffect(() => {
     if (!user || pathname === '/login') return;
@@ -235,18 +304,28 @@ export function Providers({ children }: { children: React.ReactNode }) {
     } catch {}
   }, [pathname, user]);
 
+  useEffect(() => {
+    if (isAuthLoading || user) return;
+    if (pathname === '/home-trial' || pathname === '/wishlist') {
+      const timer = window.setTimeout(() => {
+        pendingActionRef.current = null;
+        setAuthGateReason(
+          pathname === '/home-trial'
+            ? 'access and book the Home Trial service'
+            : 'access your saved frames'
+        );
+        setIsAuthGateOpen(true);
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [pathname, user, isAuthLoading]);
+
   const saveAddressesToStorage = (newAddresses: SavedAddress[]) => {
     setAddresses(newAddresses);
-    try {
-      localStorage.setItem('fovea_customer_addresses', JSON.stringify(newAddresses));
-    } catch {}
   };
 
   const saveTrialHistoryToStorage = (newHistory: HomeTrialRecord[]) => {
     setHomeTrialHistory(newHistory);
-    try {
-      localStorage.setItem('fovea_customer_trial_history', JSON.stringify(newHistory));
-    } catch {}
   };
 
   // Auth Functions
@@ -328,13 +407,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // Wishlist Functions
   const toggleWishlist = (productId: string) => {
+    if (!user) {
+      requestAuthentication('save frames to your wishlist', () => {
+        setWishlist((previous) =>
+          previous.includes(productId)
+            ? previous.filter((id) => id !== productId)
+            : [...previous, productId]
+        );
+      });
+      return;
+    }
     setWishlist((prev) => {
       const exists = prev.includes(productId);
-      const updated = exists ? prev.filter((id) => id !== productId) : [...prev, productId];
-      try {
-        localStorage.setItem('fovea_wishlist', JSON.stringify(updated));
-      } catch {}
-      return updated;
+      return exists ? prev.filter((id) => id !== productId) : [...prev, productId];
     });
   };
 
@@ -346,6 +431,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
     colorName = product.defaultColor,
     lensType: CartItem['lensType'] = 'Plano Demonstration'
   ) => {
+    if (!user) {
+      requestAuthentication('add products to your shopping bag', () => {
+        setCart((previous) => {
+          const index = previous.findIndex(
+            (item) => item.product.id === product.id && item.colorName === colorName && item.lensType === lensType
+          );
+          if (index > -1) {
+            const copy = [...previous];
+            copy[index] = { ...copy[index], quantity: copy[index].quantity + 1 };
+            return copy;
+          }
+          return [...previous, { product, colorName, quantity: 1, lensType }];
+        });
+        setIsCartOpen(true);
+      });
+      return;
+    }
     setCart((prev) => {
       const index = prev.findIndex(
         (item) => item.product.id === product.id && item.colorName === colorName && item.lensType === lensType
@@ -384,13 +486,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   // Home Trial Functions
   const toggleHomeTrialFrame = (productId: string): boolean => {
+    if (!user) {
+      requestAuthentication('select frames for a Home Trial', () => {
+        setHomeTrialFrames((previous) => {
+          if (previous.includes(productId)) return previous.filter((id) => id !== productId);
+          if (previous.length >= 4) return previous;
+          return [...previous, productId];
+        });
+      });
+      return true;
+    }
     if (homeTrialFrames.includes(productId)) {
       setHomeTrialFrames((prev) => {
-        const updated = prev.filter((id) => id !== productId);
-        try {
-          localStorage.setItem('fovea_home_trial', JSON.stringify(updated));
-        } catch {}
-        return updated;
+        return prev.filter((id) => id !== productId);
       });
       return true;
     } else {
@@ -398,11 +506,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         return false;
       }
       setHomeTrialFrames((prev) => {
-        const updated = [...prev, productId];
-        try {
-          localStorage.setItem('fovea_home_trial', JSON.stringify(updated));
-        } catch {}
-        return updated;
+        return [...prev, productId];
       });
       return true;
     }
@@ -412,9 +516,44 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const clearHomeTrial = () => {
     setHomeTrialFrames([]);
-    try {
-      localStorage.removeItem('fovea_home_trial');
-    } catch {}
+  };
+
+  const addCurrentCartToOrderHistory = (): string => {
+    if (!user || cart.length === 0) return '';
+    const referenceNumber = `FOV-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const date = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const deliveryAddress = addresses.find((address) => address.isDefault) || addresses[0];
+    const records: OrderRecord[] = cart.map((item, index) => ({
+      id: `order_${Date.now()}_${index}`,
+      referenceNumber,
+      date,
+      productName: item.product.name,
+      productCode: item.product.productCode || item.product.id,
+      colorName: item.colorName,
+      amount: item.product.price * item.quantity,
+      lensType: item.lensType,
+      status: 'Surfacing Optics',
+      deliveryAddress: deliveryAddress
+        ? `${deliveryAddress.fullAddress}, ${deliveryAddress.city} - ${deliveryAddress.pincode}`
+        : undefined,
+    }));
+    setOrderHistory((previous) => [...records, ...previous]);
+    return referenceNumber;
+  };
+
+  const guardedSetIsCartOpen = (open: boolean) => {
+    if (!open) return setIsCartOpen(false);
+    requestAuthentication('view your bag and place an order', () => setIsCartOpen(true));
+  };
+
+  const guardedSetIsWishlistOpen = (open: boolean) => {
+    if (!open) return setIsWishlistOpen(false);
+    requestAuthentication('view your saved frames', () => setIsWishlistOpen(true));
+  };
+
+  const guardedSetIsHomeTrialModalOpen = (open: boolean) => {
+    if (!open) return setIsHomeTrialModalOpen(false);
+    requestAuthentication('book a complimentary Home Trial', () => setIsHomeTrialModalOpen(true));
   };
 
   const openWhatsAppWithInquiry = (text: string) => {
@@ -441,13 +580,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         isSearchOpen,
         setIsSearchOpen,
         isCartOpen,
-        setIsCartOpen,
+        setIsCartOpen: guardedSetIsCartOpen,
         isWishlistOpen,
-        setIsWishlistOpen,
+        setIsWishlistOpen: guardedSetIsWishlistOpen,
         isWhatsAppOpen,
         setIsWhatsAppOpen,
         isHomeTrialModalOpen,
-        setIsHomeTrialModalOpen,
+        setIsHomeTrialModalOpen: guardedSetIsHomeTrialModalOpen,
         whatsAppInquiryText,
         openWhatsAppWithInquiry,
         user,
@@ -455,6 +594,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         loginWithGoogle,
         logout,
         updateProfile,
+        isAuthGateOpen,
+        authGateReason,
+        closeAuthGate,
         addresses,
         addAddress,
         updateAddress,
@@ -462,6 +604,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         homeTrialHistory,
         addHomeTrialRequest,
         orderHistory,
+        addCurrentCartToOrderHistory,
       }}
     >
       {children}
