@@ -12,6 +12,7 @@ import WhatsAppModal from '@/components/modals/WhatsAppModal';
 import HomeTrialModal from '@/components/modals/HomeTrialModal';
 import HomeTrialFloatingIndicator from '@/components/layout/HomeTrialFloatingIndicator';
 import PWAInstallPrompt from '@/components/pwa/PWAInstallPrompt';
+import FoveaChatbot from '@/components/chat/FoveaChatbot';
 
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
@@ -113,6 +114,7 @@ export default function RootLayout({
             <HomeTrialModal />
             <HomeTrialFloatingIndicator />
             <PWAInstallPrompt />
+            <FoveaChatbot />
           </div>
         </Providers>
       </body>
