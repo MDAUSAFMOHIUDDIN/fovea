@@ -62,22 +62,40 @@ export async function POST(request: NextRequest) {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-      contents: messages.map((message) => ({
-        role: message.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: message.text }],
-      })),
-      config: {
-        systemInstruction: FOVEA_CHATBOT_INSTRUCTIONS,
-        temperature: 0.25,
-        maxOutputTokens: 700,
-      },
-    });
+    const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const candidateModels = Array.from(new Set([configuredModel, 'gemini-3.8-flash', 'gemini-3.1-flash-lite']));
 
-    const answer = response.text?.trim();
+    let answer = '';
+    let lastError: unknown;
+
+    for (const model of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: messages.map((message) => ({
+            role: message.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: message.text }],
+          })),
+          config: {
+            systemInstruction: FOVEA_CHATBOT_INSTRUCTIONS,
+            temperature: 0.25,
+            maxOutputTokens: 700,
+          },
+        });
+
+        const text = response.text?.trim();
+        if (text) {
+          answer = text;
+          break;
+        }
+      } catch (err) {
+        console.warn(`Model ${model} failed, trying next candidate:`, err);
+        lastError = err;
+      }
+    }
+
     if (!answer) {
-      throw new Error('Gemini returned an empty response.');
+      throw lastError || new Error('Gemini returned an empty response.');
     }
 
     return NextResponse.json({ answer });
