@@ -140,8 +140,8 @@ export default function HomePage() {
             muted
             playsInline
             preload="auto"
-            poster="https://images.unsplash.com/photo-1509783236416-c9ad59bae472?auto=format&fit=crop&w=2200&q=90"
-            className="w-full h-full object-cover object-center"
+            disablePictureInPicture
+            className="w-full h-full object-cover object-center bg-[#0C162C]"
           >
             <source src="/glasses.mp4" type="video/mp4" />
           </video>
