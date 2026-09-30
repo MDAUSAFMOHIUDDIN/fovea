@@ -65,6 +65,8 @@ export default function HomeTrialModal() {
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [locationDetected, setLocationDetected] = useState(false);
   const [currentLocationUrl, setCurrentLocationUrl] = useState('');
+  const [locationCoordinates, setLocationCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState('');
   const [showMapPicker, setShowMapPicker] = useState(false);
 
   // Auto-fill logged in user and default address
@@ -124,26 +126,80 @@ export default function HomeTrialModal() {
 
   const handleUseCurrentLocation = () => {
     setIsDetectingLocation(true);
+    setLocationError('');
+    setShowMapPicker(false);
+
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setIsDetectingLocation(false);
+        async (pos) => {
+          const latitude = Number(pos.coords.latitude.toFixed(7));
+          const longitude = Number(pos.coords.longitude.toFixed(7));
+
           setLocationDetected(true);
-          setCurrentLocationUrl(
-            `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
-          );
+          setLocationCoordinates({ latitude, longitude });
+          setCurrentLocationUrl(`https://www.google.com/maps?q=${latitude},${longitude}`);
+          setShowMapPicker(true);
+
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1&accept-language=en`
+            );
+            if (!response.ok) throw new Error('Unable to resolve address');
+
+            const result = (await response.json()) as {
+              address?: {
+                house_number?: string;
+                building?: string;
+                road?: string;
+                neighbourhood?: string;
+                suburb?: string;
+                city?: string;
+                town?: string;
+                village?: string;
+                county?: string;
+                postcode?: string;
+              };
+            };
+            const geo = result.address || {};
+            const resolvedBuilding = [geo.house_number, geo.building].filter(Boolean).join(', ');
+            const resolvedStreet = [geo.road, geo.neighbourhood || geo.suburb].filter(Boolean).join(', ');
+
+            setAddress((previous) => ({
+              building: resolvedBuilding || previous.building,
+              street: resolvedStreet || previous.street,
+              landmark: geo.neighbourhood || geo.suburb || previous.landmark,
+              city: geo.city || geo.town || geo.village || geo.county || previous.city,
+              pincode: geo.postcode || previous.pincode,
+            }));
+          } catch {
+            setLocationError(
+              'GPS pin captured accurately. Please verify the written address fields before continuing.'
+            );
+          } finally {
+            setIsDetectingLocation(false);
+          }
         },
-        () => {
+        (error) => {
           setIsDetectingLocation(false);
           setLocationDetected(false);
           setCurrentLocationUrl('');
+          setLocationCoordinates(null);
+          const message =
+            error.code === error.PERMISSION_DENIED
+              ? 'Location permission was denied. Please allow location access in your browser and try again.'
+              : error.code === error.TIMEOUT
+                ? 'Location detection timed out. Move near a window, enable GPS and try again.'
+                : 'Your current location could not be detected. Please enable GPS and try again.';
+          setLocationError(message);
         },
-        { timeout: 3000 }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     } else {
       setIsDetectingLocation(false);
       setLocationDetected(false);
       setCurrentLocationUrl('');
+      setLocationCoordinates(null);
+      setLocationError('This browser does not support current-location detection.');
     }
   };
 
@@ -609,16 +665,26 @@ export default function HomeTrialModal() {
 
                     <button
                       type="button"
-                      onClick={() => setShowMapPicker(!showMapPicker)}
+                      onClick={() => {
+                        if (!locationDetected) handleUseCurrentLocation();
+                        else setShowMapPicker(!showMapPicker);
+                      }}
+                      disabled={isDetectingLocation}
                       className="w-full sm:w-auto px-4 min-h-[44px] bg-white hover:bg-[#F5F3EF] border border-[#0C162C]/15 rounded-xl text-xs font-semibold text-[#0C162C] flex items-center justify-center gap-2 shadow-xs transition-colors"
                     >
                       <MapPin className="w-4 h-4 text-[#0D5C63]" />
-                      <span>{showMapPicker ? 'Close Map' : 'Choose on Map'}</span>
+                      <span>{showMapPicker ? 'Hide Google Map' : locationDetected ? 'View Google Map' : 'Detect & View Map'}</span>
                     </button>
                   </div>
 
+                  {locationError && (
+                    <div className="px-4 py-3 rounded-xl border border-amber-300 bg-amber-50 text-[11px] leading-relaxed text-amber-900">
+                      {locationError}
+                    </div>
+                  )}
+
                   {/* Interactive Visual Map Preview */}
-                  {showMapPicker && (
+                  {showMapPicker && locationCoordinates && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
@@ -630,35 +696,26 @@ export default function HomeTrialModal() {
                           <MapPin className="w-4 h-4 text-[#C5A880]" />
                           <span>Pinpoint Delivery Location</span>
                         </span>
-                        <span className="text-[11px] text-white/60">Drag map or click pin</span>
+                        <span className="text-[11px] text-white/60">Live device GPS pin</span>
                       </div>
-                      <div className="relative h-36 w-full rounded-xl overflow-hidden bg-slate-800 flex items-center justify-center border border-white/10">
-                        {/* Map Grid Simulation */}
-                        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#FAF9F6_1px,transparent_1px)] [background-size:16px_16px]" />
-                        <div className="text-center space-y-1 relative z-10">
-                          <div className="w-10 h-10 rounded-full bg-[#0D5C63] text-white flex items-center justify-center mx-auto shadow-lg animate-bounce">
-                            <MapPin className="w-5 h-5 text-[#C5A880]" />
-                          </div>
-                          <p className="text-xs font-semibold">Chelsea Historic District, Manhattan</p>
-                          <p className="text-[10px] text-white/70">40.7465° N, 74.0014° W</p>
-                        </div>
+                      <iframe
+                        title="Current delivery location on Google Maps"
+                        src={`https://maps.google.com/maps?q=${locationCoordinates.latitude},${locationCoordinates.longitude}&z=17&output=embed`}
+                        className="h-48 w-full rounded-xl border border-white/10 bg-slate-800"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                      />
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-white/70">
+                        <span>{locationCoordinates.latitude}, {locationCoordinates.longitude}</span>
+                        <a
+                          href={currentLocationUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto px-4 py-2 bg-[#0D5C63] hover:bg-[#094348] text-white text-center text-xs font-semibold rounded-lg transition-colors"
+                        >
+                          Open Exact Pin in Google Maps
+                        </a>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAddress({
-                            building: 'Residence 402, Royal Palms',
-                            street: 'Masab Tank',
-                            landmark: 'Near Chacha Nehru Park',
-                            city: 'Hyderabad',
-                            pincode: '500028',
-                          });
-                          setShowMapPicker(false);
-                        }}
-                        className="w-full py-2 bg-[#0D5C63] hover:bg-[#094348] text-white text-xs font-semibold rounded-lg transition-colors"
-                      >
-                        Confirm Pin Location
-                      </button>
                     </motion.div>
                   )}
 
